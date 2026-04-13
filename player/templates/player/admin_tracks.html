@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Track Administration</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --panel: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #d1d5db;
+      --accent: #115e59;
+      --accent-soft: #e6f4f2;
+      --danger: #991b1b;
+      --danger-soft: #fee2e2;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background: linear-gradient(180deg, var(--bg), #eef2ff);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+
+    .wrap {
+      width: min(780px, 100%);
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+    }
+
+    h1,
+    h2 {
+      margin-top: 0;
+    }
+
+    h1 {
+      margin-bottom: 6px;
+      font-size: 1.6rem;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    form {
+      display: grid;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.92rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    input[type="text"],
+    input[type="file"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.95rem;
+      background: #fff;
+    }
+
+    input:focus {
+      outline: 2px solid color-mix(in srgb, var(--accent) 30%, white 70%);
+      border-color: var(--accent);
+    }
+
+    .btn {
+      border: none;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.95rem;
+      padding: 10px 14px;
+      cursor: pointer;
+      width: fit-content;
+    }
+
+    .errors {
+      margin: 0;
+      padding: 10px 12px;
+      list-style: none;
+      border-radius: 10px;
+      border: 1px solid #fecaca;
+      background: var(--danger-soft);
+      color: var(--danger);
+      font-size: 0.92rem;
+      line-height: 1.4;
+    }
+
+    .track-list {
+      margin: 12px 0 0;
+      padding-left: 0;
+      display: grid;
+      gap: 10px;
+      color: var(--text);
+      list-style: none;
+    }
+
+    .track-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px;
+      background: #fafafa;
+    }
+
+    .track-meta {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .track-title {
+      font-weight: 700;
+    }
+
+    .track-slug {
+      font-size: 0.88rem;
+      color: var(--muted);
+      word-break: break-word;
+    }
+
+    .subtitle-status {
+      font-size: 0.84rem;
+      font-weight: 600;
+    }
+
+    .subtitle-status.ok {
+      color: #0f766e;
+    }
+
+    .subtitle-status.pending {
+      color: #9a3412;
+    }
+
+    .subtitle-status.generating {
+      color: #1d4ed8;
+    }
+
+    .delete-form {
+      margin: 0;
+      display: inline-block;
+    }
+
+    .track-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .inline-form {
+      margin: 0;
+      display: inline-block;
+    }
+
+    .secondary-btn {
+      border: 1px solid color-mix(in srgb, var(--accent) 45%, white 55%);
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .secondary-btn[disabled] {
+      opacity: 0.65;
+      cursor: wait;
+    }
+
+    .danger-btn {
+      border: 1px solid #ef4444;
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    .hint {
+      margin-top: 8px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .top-actions {
+      margin-top: 12px;
+      font-size: 0.92rem;
+    }
+
+    .top-actions a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .top-actions a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="panel">
+      <h1>Add New Track</h1>
+      <p>Upload an audio file to make it available in the player list.</p>
+      <div class="top-actions"><a href="/">Open player</a></div>
+
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <ul class="errors">
+            {% for error in form.non_field_errors %}
+              <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+
+        <div>
+          <label for="id_title">Track title (optional)</label>
+          {{ form.title }}
+          {% if form.title.errors %}
+            <ul class="errors">
+              {% for error in form.title.errors %}
+                <li>{{ error }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </div>
+
+        <div>
+          <label for="id_audio_file">Audio file</label>
+          {{ form.audio_file }}
+          {% if form.audio_file.errors %}
+            <ul class="errors">
+              {% for error in form.audio_file.errors %}
+                <li>{{ error }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+          <p class="hint">Supported formats: mp3, wav, m4a, ogg, flac.</p>
+        </div>
+
+        <button type="submit" class="btn">Upload track</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Current Tracks</h2>
+      {% if tracks %}
+        <ol class="track-list">
+          {% for track in tracks %}
+            <li class="track-item">
+              <div class="track-meta">
+                <span class="track-title">{{ track.title }}</span>
+                <span class="track-slug">{{ track.slug }}</span>
+                <span
+                  class="subtitle-status {% if track.has_subtitles %}ok{% else %}pending{% endif %}"
+                  data-subtitle-status="{{ track.slug }}"
+                >
+                  Subtitles: {% if track.has_subtitles %}generated{% else %}not generated{% endif %}
+                </span>
+              </div>
+              <div class="track-actions">
+                <form method="post" class="inline-form">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="generate_subtitles">
+                  <input type="hidden" name="track_slug" value="{{ track.slug }}">
+                  <button
+                    type="submit"
+                    class="btn secondary-btn"
+                    data-generate-button="{{ track.slug }}"
+                    onclick="return true"
+                  >
+                    {% if track.has_subtitles %}Regenerate subtitles{% else %}Generate subtitles{% endif %}
+                  </button>
+                </form>
+
+                <form method="post" class="delete-form">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="delete">
+                  <input type="hidden" name="track_slug" value="{{ track.slug }}">
+                  <button type="submit" class="btn danger-btn" onclick="return confirm('Remove {{ track.title|escapejs }}?');">Remove</button>
+                </form>
+              </div>
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p>No tracks uploaded yet.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <script>
+    (() => {
+      const statusByTrack = new Map();
+      let refreshTimer = null;
+      let requestInFlight = false;
+      const localTickMs = 1000;
+
+      function formatDuration(seconds) {
+        if (!Number.isFinite(seconds) || seconds <= 0) {
+          return "less than 1s";
+        }
+
+        const rounded = Math.ceil(seconds);
+        const mins = Math.floor(rounded / 60);
+        const secs = rounded % 60;
+        if (mins === 0) {
+          return `${secs}s`;
+        }
+        return `${mins}m ${secs}s`;
+      }
+
+      function applyTrackState(slug, state) {
+        const statusEl = document.querySelector(`[data-subtitle-status="${slug}"]`);
+        const buttonEl = document.querySelector(`[data-generate-button="${slug}"]`);
+        if (!statusEl || !buttonEl) {
+          return;
+        }
+
+        if (state.is_generating) {
+          const etaSeconds = getLiveEtaSeconds(state);
+          const etaText = Number.isFinite(etaSeconds)
+            ? ` (${formatDuration(etaSeconds)} left)`
+            : "";
+          statusEl.textContent = `Subtitles: generating...${etaText}`;
+          statusEl.classList.remove("ok", "pending");
+          statusEl.classList.add("generating");
+          buttonEl.textContent = "Generating...";
+          buttonEl.disabled = true;
+          return;
+        }
+
+        statusEl.classList.remove("generating");
+        if (state.has_subtitles) {
+          statusEl.textContent = "Subtitles: generated";
+          statusEl.classList.remove("pending");
+          statusEl.classList.add("ok");
+          buttonEl.textContent = "Regenerate subtitles";
+        } else {
+          statusEl.textContent = "Subtitles: not generated";
+          statusEl.classList.remove("ok");
+          statusEl.classList.add("pending");
+          buttonEl.textContent = "Generate subtitles";
+        }
+        buttonEl.disabled = false;
+      }
+
+      function hydrateStateFromServer(state) {
+        const hydrated = {
+          ...state,
+        };
+
+        if (state && state.is_generating && Number.isFinite(state.eta_seconds)) {
+          hydrated.eta_anchor_seconds = state.eta_seconds;
+          hydrated.eta_anchor_at_ms = Date.now();
+        }
+
+        return hydrated;
+      }
+
+      function getLiveEtaSeconds(state) {
+        if (!state || !Number.isFinite(state.eta_anchor_seconds) || !Number.isFinite(state.eta_anchor_at_ms)) {
+          return Number.isFinite(state?.eta_seconds) ? state.eta_seconds : NaN;
+        }
+
+        const elapsedSeconds = Math.max(0, (Date.now() - state.eta_anchor_at_ms) / 1000);
+        return Math.max(0, state.eta_anchor_seconds - elapsedSeconds);
+      }
+
+      function renderFromCache() {
+        statusByTrack.forEach((state, slug) => {
+          applyTrackState(slug, state);
+        });
+      }
+
+      function nextRefreshDelayMs() {
+        const states = Array.from(statusByTrack.values());
+        const generating = states.filter((state) => state && state.is_generating);
+        if (generating.length === 0) {
+          return 12000;
+        }
+
+        const maxEta = generating.reduce((max, state) => {
+          const eta = Number.isFinite(getLiveEtaSeconds(state)) ? getLiveEtaSeconds(state) : 0;
+          return Math.max(max, eta);
+        }, 0);
+
+        const scaled = Math.round(maxEta * 250);
+        return Math.max(2000, Math.min(10000, scaled));
+      }
+
+      function scheduleRefresh(delayMs) {
+        if (refreshTimer) {
+          clearTimeout(refreshTimer);
+        }
+        refreshTimer = setTimeout(refreshStatuses, delayMs);
+      }
+
+      async function refreshStatuses() {
+        if (requestInFlight) {
+          return;
+        }
+
+        requestInFlight = true;
+        try {
+          const response = await fetch("{% url 'subtitle-generation-status' %}", {
+            credentials: "same-origin"
+          });
+          if (!response.ok) {
+            scheduleRefresh(4000);
+            return;
+          }
+
+          const payload = await response.json();
+          const tracks = payload.tracks || {};
+          Object.entries(tracks).forEach(([slug, state]) => {
+            statusByTrack.set(slug, hydrateStateFromServer(state));
+          });
+          renderFromCache();
+          scheduleRefresh(nextRefreshDelayMs());
+        } catch (error) {
+          // Ignore transient poll failures and retry on next interval.
+          scheduleRefresh(5000);
+        } finally {
+          requestInFlight = false;
+        }
+      }
+
+      refreshStatuses();
+      setInterval(renderFromCache, localTickMs);
+    })();
+  </script>
+</body>
+</html>
