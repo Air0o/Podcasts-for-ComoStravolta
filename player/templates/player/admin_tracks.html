@@ -325,16 +325,16 @@
 
       function formatDuration(seconds) {
         if (!Number.isFinite(seconds) || seconds <= 0) {
-          return "less than 1s";
+          return "almost done";
         }
 
         const rounded = Math.ceil(seconds);
         const mins = Math.floor(rounded / 60);
         const secs = rounded % 60;
         if (mins === 0) {
-          return `${secs}s`;
+          return `${secs}s left`;
         }
-        return `${mins}m ${secs}s`;
+        return `${mins}m ${secs}s left`;
       }
 
       function applyTrackState(slug, state) {
@@ -347,7 +347,7 @@
         if (state.is_generating) {
           const etaSeconds = getLiveEtaSeconds(state);
           const etaText = Number.isFinite(etaSeconds)
-            ? ` (${formatDuration(etaSeconds)} left)`
+            ? ` (${formatDuration(etaSeconds)})`
             : "";
           statusEl.textContent = `Subtitles: generating...${etaText}`;
           statusEl.classList.remove("ok", "pending");

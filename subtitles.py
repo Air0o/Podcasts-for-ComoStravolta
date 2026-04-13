@@ -2,14 +2,47 @@ import argparse
 import json
 from functools import lru_cache
 from pathlib import Path
+from threading import Lock, Thread
 
 import whisper
 from whisper.audio import SAMPLE_RATE
 
 
+_PRELOADING_MODELS: set[str] = set()
+_PRELOADING_MODELS_LOCK = Lock()
+_TRANSCRIBE_LOCKS: dict[str, Lock] = {}
+_TRANSCRIBE_LOCKS_GUARD = Lock()
+
+
 @lru_cache(maxsize=4)
 def load_model(model_name: str = "large"):
     return whisper.load_model(model_name)
+
+
+def preload_model_in_background(model_name: str = "large") -> bool:
+    with _PRELOADING_MODELS_LOCK:
+        if model_name in _PRELOADING_MODELS:
+            return False
+        _PRELOADING_MODELS.add(model_name)
+
+    def _run() -> None:
+        try:
+            load_model(model_name)
+        finally:
+            with _PRELOADING_MODELS_LOCK:
+                _PRELOADING_MODELS.discard(model_name)
+
+    Thread(target=_run, name=f"whisper-preload-{model_name}", daemon=True).start()
+    return True
+
+
+def _get_transcribe_lock(model_name: str) -> Lock:
+    with _TRANSCRIBE_LOCKS_GUARD:
+        lock = _TRANSCRIBE_LOCKS.get(model_name)
+        if lock is None:
+            lock = Lock()
+            _TRANSCRIBE_LOCKS[model_name] = lock
+        return lock
 
 
 def normalize_segments(segments: list[dict]) -> list[dict]:
@@ -30,7 +63,9 @@ def normalize_segments(segments: list[dict]) -> list[dict]:
 
 def get_subtitles(file_path: str, model_name: str = "large") -> list[dict]:
     model = load_model(model_name)
-    result = model.transcribe(file_path)
+    # Whisper model inference is not reliable under concurrent access.
+    with _get_transcribe_lock(model_name):
+        result = model.transcribe(file_path)
     return normalize_segments(result.get("segments", []))
 
 

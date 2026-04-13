@@ -13,11 +13,11 @@ from subtitles import get_audio_duration_seconds, get_subtitles, load_segments_j
 
 
 SUPPORTED_AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".ogg", ".flac"}
-DEFAULT_WHISPER_MODEL = "medium"
+DEFAULT_WHISPER_MODEL = getattr(settings, "WHISPER_MODEL_NAME", "medium")
 _GENERATING_TRACKS: set[str] = set()
 _GENERATING_TRACKS_LOCK = Lock()
 _MINIMUM_ETA_OVERHEAD_SECONDS = 1.0
-_DEFAULT_SECONDS_PER_AUDIO_SECOND = 0.55
+_DEFAULT_SECONDS_PER_AUDIO_SECOND = 1
 _MIN_SECONDS_PER_AUDIO_SECOND = 0.15
 _MAX_SECONDS_PER_AUDIO_SECOND = 1.25
 _seconds_per_audio_second = _DEFAULT_SECONDS_PER_AUDIO_SECOND
@@ -139,18 +139,32 @@ def _is_track_generating(track_slug: str) -> bool:
 		return track_slug in _GENERATING_TRACKS
 
 
+def _estimate_remaining_seconds(timing: dict[str, float], now: float | None = None) -> float:
+	current_time = monotonic() if now is None else now
+	elapsed = current_time - timing["started_at"]
+	bias_reduction = min(0.25, elapsed / 80.0)
+	adjusted_total = timing["estimated_total_seconds"] * (1.0 - bias_reduction)
+	remaining = adjusted_total - elapsed
+	return max(0.0, remaining)
+
+
 def _get_track_eta_seconds(track_slug: str) -> float | None:
 	with _GENERATING_TRACKS_LOCK:
-		timing = _GENERATION_TIMINGS.get(track_slug)
-		if not timing:
+		if track_slug not in _GENERATION_TIMINGS:
 			return None
 
-		elapsed = monotonic() - timing["started_at"]
-		bias_reduction = min(0.25, elapsed / 80.0)
-		adjusted_total = timing["estimated_total_seconds"] * (1.0 - bias_reduction)
-		remaining = adjusted_total - elapsed
+		now = monotonic()
+		ordered_timings = sorted(
+			_GENERATION_TIMINGS.items(),
+			key=lambda item: (item[1]["started_at"], item[0]),
+		)
+		cumulative_eta = 0.0
+		for slug, timing in ordered_timings:
+			cumulative_eta += _estimate_remaining_seconds(timing, now=now)
+			if slug == track_slug:
+				return cumulative_eta
 
-		return max(0.0, remaining)
+		return None
 
 
 def _start_track_generation(track: dict) -> bool:

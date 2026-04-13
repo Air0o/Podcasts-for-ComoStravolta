@@ -6,6 +6,8 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 
+from player import views as player_views
+
 
 class PlayerViewsTests(TestCase):
 	def setUp(self):
@@ -69,3 +71,37 @@ class PlayerViewsTests(TestCase):
 
 		subtitle_file = Path(self.temp_media_dir) / "subtitles" / "test.json"
 		self.assertTrue(subtitle_file.exists())
+
+	def test_track_eta_includes_waiting_jobs(self):
+		with player_views._GENERATING_TRACKS_LOCK:
+			original_timings = dict(player_views._GENERATION_TIMINGS)
+			player_views._GENERATION_TIMINGS.clear()
+			player_views._GENERATION_TIMINGS.update(
+				{
+					"alpha": {
+						"started_at": 90.0,
+						"estimated_total_seconds": 30.0,
+						"audio_duration_seconds": 40.0,
+					},
+					"beta": {
+						"started_at": 95.0,
+						"estimated_total_seconds": 20.0,
+						"audio_duration_seconds": 30.0,
+					},
+				}
+			)
+
+		try:
+			with patch("player.views.monotonic", return_value=100.0):
+				alpha_eta = player_views._get_track_eta_seconds("alpha")
+				beta_eta = player_views._get_track_eta_seconds("beta")
+
+			self.assertIsNotNone(alpha_eta)
+			self.assertIsNotNone(beta_eta)
+			self.assertGreater(beta_eta, alpha_eta)
+			self.assertAlmostEqual(alpha_eta, 16.25, places=2)
+			self.assertAlmostEqual(beta_eta, 30.0, places=2)
+		finally:
+			with player_views._GENERATING_TRACKS_LOCK:
+				player_views._GENERATION_TIMINGS.clear()
+				player_views._GENERATION_TIMINGS.update(original_timings)
