@@ -2,6 +2,9 @@
 
 A simple project for uploading audio tracks and generating/serving subtitle JSON files for playback.
 
+### Requirements
+- `python <= 1.13.x`
+
 Install dependencies:
 `pip install -r requirements.txt`
 
