@@ -1,4 +1,4 @@
-# Podcasts for ComoStravolta
+# Podcasts for comostravolta
 
 A simple project for uploading audio tracks and generating/serving subtitle JSON files for playback.
 
