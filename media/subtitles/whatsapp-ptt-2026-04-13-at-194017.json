@@ -1,0 +1,42 @@
+[
+  {
+    "start": 0.0,
+    "end": 7.0,
+    "text": "che dobbiamo sviluppare, questa specie di assistente di un si chiama receptionist AI"
+  },
+  {
+    "start": 7.0,
+    "end": 9.0,
+    "text": "e siamo a buon punto"
+  },
+  {
+    "start": 9.0,
+    "end": 13.0,
+    "text": "la cosa ci fa al nostro capo? Dovete farlo che supporta pi\u00f9 lingue, non mi interessa come"
+  },
+  {
+    "start": 13.0,
+    "end": 15.0,
+    "text": "basta che supporta pi\u00f9 lingue"
+  },
+  {
+    "start": 15.0,
+    "end": 20.0,
+    "text": "tanto mi fa... se il modello \u00e8 leggero, s\u00ec, modelli sono leggeri, potete farne girare pi\u00f9 di uno"
+  },
+  {
+    "start": 20.0,
+    "end": 25.0,
+    "text": "allora ho pensato, chi cazzo me lo fa fare di fare, implementare la traduzione?"
+  },
+  {
+    "start": 25.0,
+    "end": 31.0,
+    "text": "uso un modello per capire cosa deve fare e l'altro modello lo supertelega alle traduzioni"
+  },
+  {
+    "start": 31.0,
+    "end": 36.0,
+    "text": "perfetto, non fa una piega e supporta virtualmente tutte le lingue del mondo"
+  }
+]

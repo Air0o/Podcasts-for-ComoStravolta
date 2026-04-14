@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'player.apps.PlayerConfig',
+    'podcast_management.apps.PodcastManagementConfig',
 ]
 
 MIDDLEWARE = [

@@ -1,0 +1,21 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'podcast_management/admin_index.css' %}">
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+  <div class="module podcast-management-module">
+    <h2>Podcast Management</h2>
+    <p>Open track management to upload audio files and generate subtitles.</p>
+    <p>
+      <a href="{% url 'admin-tracks' %}" class="button podcast-management-link">Go to Track Management</a>
+    </p>
+  </div>
+
+  {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+</div>
+{% endblock %}

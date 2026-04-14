@@ -6,7 +6,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 
-from player import views as player_views
+from podcast_management import services as podcast_services
 
 
 class PlayerViewsTests(TestCase):
@@ -55,7 +55,7 @@ class PlayerViewsTests(TestCase):
 		self.assertFalse((audio_dir / "test.mp3").exists())
 		self.assertFalse((subtitle_dir / "test.json").exists())
 
-	@patch("player.views.get_subtitles")
+	@patch("podcast_management.services.get_subtitles")
 	def test_subtitle_endpoint_auto_generates_when_missing(self, mock_get_subtitles):
 		audio_dir = Path(self.temp_media_dir) / "audio"
 		audio_dir.mkdir(parents=True, exist_ok=True)
@@ -73,10 +73,10 @@ class PlayerViewsTests(TestCase):
 		self.assertTrue(subtitle_file.exists())
 
 	def test_track_eta_includes_waiting_jobs(self):
-		with player_views._GENERATING_TRACKS_LOCK:
-			original_timings = dict(player_views._GENERATION_TIMINGS)
-			player_views._GENERATION_TIMINGS.clear()
-			player_views._GENERATION_TIMINGS.update(
+		with podcast_services._GENERATING_TRACKS_LOCK:
+			original_timings = dict(podcast_services._GENERATION_TIMINGS)
+			podcast_services._GENERATION_TIMINGS.clear()
+			podcast_services._GENERATION_TIMINGS.update(
 				{
 					"alpha": {
 						"started_at": 90.0,
@@ -92,9 +92,9 @@ class PlayerViewsTests(TestCase):
 			)
 
 		try:
-			with patch("player.views.monotonic", return_value=100.0):
-				alpha_eta = player_views._get_track_eta_seconds("alpha")
-				beta_eta = player_views._get_track_eta_seconds("beta")
+			with patch("podcast_management.services.monotonic", return_value=100.0):
+				alpha_eta = podcast_services.get_track_eta_seconds("alpha")
+				beta_eta = podcast_services.get_track_eta_seconds("beta")
 
 			self.assertIsNotNone(alpha_eta)
 			self.assertIsNotNone(beta_eta)
@@ -102,6 +102,43 @@ class PlayerViewsTests(TestCase):
 			self.assertAlmostEqual(alpha_eta, 16.25, places=2)
 			self.assertAlmostEqual(beta_eta, 30.0, places=2)
 		finally:
-			with player_views._GENERATING_TRACKS_LOCK:
-				player_views._GENERATION_TIMINGS.clear()
-				player_views._GENERATION_TIMINGS.update(original_timings)
+			with podcast_services._GENERATING_TRACKS_LOCK:
+				podcast_services._GENERATION_TIMINGS.clear()
+				podcast_services._GENERATION_TIMINGS.update(original_timings)
+
+
+class PodcastManagementAccessTests(TestCase):
+	def test_admin_index_has_track_management_button_for_staff(self):
+		User = get_user_model()
+		staff_user = User.objects.create_user(
+			username="adminstaff",
+			email="adminstaff@example.com",
+			password="password123",
+			is_staff=True,
+			is_superuser=True,
+		)
+		self.client.force_login(staff_user)
+
+		response = self.client.get("/admin/")
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, "Go to Track Management")
+		self.assertContains(response, "/manage/tracks/")
+
+	def test_track_management_redirects_anonymous_users_to_admin_login(self):
+		response = self.client.get("/manage/tracks/")
+		self.assertEqual(response.status_code, 302)
+		self.assertIn("/admin/login/", response["Location"])
+
+	def test_track_management_denies_non_staff_users(self):
+		User = get_user_model()
+		regular_user = User.objects.create_user(
+			username="regular",
+			email="regular@example.com",
+			password="password123",
+			is_staff=False,
+		)
+		self.client.force_login(regular_user)
+
+		response = self.client.get("/manage/tracks/")
+		self.assertEqual(response.status_code, 302)
+		self.assertIn("/admin/login/", response["Location"])

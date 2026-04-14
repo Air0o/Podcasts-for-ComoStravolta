@@ -1,5 +1,7 @@
 import argparse
 import json
+import os
+import shutil
 from functools import lru_cache
 from pathlib import Path
 from threading import Lock, Thread
@@ -12,6 +14,35 @@ _PRELOADING_MODELS: set[str] = set()
 _PRELOADING_MODELS_LOCK = Lock()
 _TRANSCRIBE_LOCKS: dict[str, Lock] = {}
 _TRANSCRIBE_LOCKS_GUARD = Lock()
+
+
+def ensure_ffmpeg_available() -> None:
+    if shutil.which("ffmpeg"):
+        return
+
+    try:
+        import imageio_ffmpeg
+    except ImportError as exc:
+        raise RuntimeError(
+            "ffmpeg is required for subtitle generation. Install ffmpeg or add imageio-ffmpeg to the environment."
+        ) from exc
+
+    ffmpeg_executable = Path(imageio_ffmpeg.get_ffmpeg_exe())
+    ffmpeg_dir = str(ffmpeg_executable.parent)
+    current_path = os.environ.get("PATH", "")
+    os.environ["PATH"] = f"{ffmpeg_dir}{os.pathsep}{current_path}" if current_path else ffmpeg_dir
+
+    if os.name == "nt" and not shutil.which("ffmpeg"):
+        # imageio-ffmpeg ships a versioned exe name; create a stable ffmpeg.exe alias for Whisper.
+        shim_dir = Path(__file__).resolve().parent / ".bin"
+        shim_dir.mkdir(parents=True, exist_ok=True)
+        shim_file = shim_dir / "ffmpeg.exe"
+        if not shim_file.exists():
+            shutil.copy2(ffmpeg_executable, shim_file)
+        os.environ["PATH"] = f"{shim_dir}{os.pathsep}{os.environ['PATH']}"
+
+    if not shutil.which("ffmpeg"):
+        raise RuntimeError("Unable to resolve an ffmpeg executable for subtitle generation.")
 
 
 @lru_cache(maxsize=4)
@@ -62,6 +93,7 @@ def normalize_segments(segments: list[dict]) -> list[dict]:
 
 
 def get_subtitles(file_path: str, model_name: str = "large") -> list[dict]:
+    ensure_ffmpeg_available()
     model = load_model(model_name)
     # Whisper model inference is not reliable under concurrent access.
     with _get_transcribe_lock(model_name):
@@ -70,6 +102,7 @@ def get_subtitles(file_path: str, model_name: str = "large") -> list[dict]:
 
 
 def get_audio_duration_seconds(file_path: str) -> float:
+    ensure_ffmpeg_available()
     audio = whisper.load_audio(file_path)
     return float(len(audio)) / float(SAMPLE_RATE)
 
