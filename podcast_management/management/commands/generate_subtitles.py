@@ -8,10 +8,9 @@ from podcast_management.services import SUPPORTED_AUDIO_EXTENSIONS
 
 
 class Command(BaseCommand):
-    help = 'Generate JSON subtitle segments for audio files in media/audio'
+    help = 'Generate subtitle JSON files from audio using Whisper in media/subtitles'
 
     def add_arguments(self, parser):
-        parser.add_argument('--model', default='small', help='Whisper model name')
         parser.add_argument('--force', action='store_true', help='Regenerate files even if JSON already exists')
 
     def handle(self, *args, **options):
@@ -24,11 +23,11 @@ class Command(BaseCommand):
             self.stdout.write('Create it and place audio files inside, then run this command again.')
             return
 
-        model_name = options['model']
         force = options['force']
 
         processed = 0
         skipped = 0
+        failed = 0
         for audio_file in sorted(audio_dir.iterdir()):
             if not audio_file.is_file() or audio_file.suffix.lower() not in SUPPORTED_AUDIO_EXTENSIONS:
                 continue
@@ -39,10 +38,14 @@ class Command(BaseCommand):
                 self.stdout.write(f'Skipping existing: {output_file.name}')
                 continue
 
-            self.stdout.write(f'Transcribing: {audio_file.name}')
-            segments = get_subtitles(str(audio_file), model_name=model_name)
-            save_segments_json(segments, output_file)
-            self.stdout.write(self.style.SUCCESS(f'Saved: {output_file.name} ({len(segments)} segments)'))
-            processed += 1
+            self.stdout.write(f'Generating: {audio_file.name}')
+            try:
+                segments = get_subtitles(str(audio_file), model_name='large')
+                save_segments_json(segments, output_file)
+                self.stdout.write(self.style.SUCCESS(f'Saved: {output_file.name} ({len(segments)} segments)'))
+                processed += 1
+            except Exception as exc:
+                failed += 1
+                self.stdout.write(self.style.ERROR(f'Failed {audio_file.name}: {exc}'))
 
-        self.stdout.write(self.style.SUCCESS(f'Done. Processed={processed}, Skipped={skipped}'))
+        self.stdout.write(self.style.SUCCESS(f'Done. Processed={processed}, Skipped={skipped}, Failed={failed}'))

@@ -1,107 +1,141 @@
-<!doctype html>
-<html lang="en">
-<head>
-  {% load static %}
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Track Administration</title>
-  <link rel="stylesheet" href="{% static 'podcast_management/admin_tracks.css' %}">
-</head>
-<body>
-  <div class="wrap">
-    <section class="panel">
-      <h1>Add New Track</h1>
-      <p>Upload an audio file to make it available in the player list.</p>
-      <div class="top-actions"><a href="/">Open player</a></div>
+{% extends "base.html" %}
+{% load static %}
 
-      <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
+{% block title %}Podcast Administration{% endblock %}
 
-        {% if form.non_field_errors %}
-          <ul class="errors">
-            {% for error in form.non_field_errors %}
-              <li>{{ error }}</li>
-            {% endfor %}
-          </ul>
-        {% endif %}
-
-        <div>
-          <label for="id_title">Track title (optional)</label>
-          {{ form.title }}
-          {% if form.title.errors %}
-            <ul class="errors">
-              {% for error in form.title.errors %}
-                <li>{{ error }}</li>
-              {% endfor %}
-            </ul>
-          {% endif %}
-        </div>
-
-        <div>
-          <label for="id_audio_file">Audio file</label>
-          {{ form.audio_file }}
-          {% if form.audio_file.errors %}
-            <ul class="errors">
-              {% for error in form.audio_file.errors %}
-                <li>{{ error }}</li>
-              {% endfor %}
-            </ul>
-          {% endif %}
-          <p class="hint">Supported formats: mp3, wav, m4a, ogg, flac.</p>
-        </div>
-
-        <button type="submit" class="btn">Upload track</button>
-      </form>
-    </section>
-
-    <section class="panel">
-      <h2>Current Tracks</h2>
-      {% if tracks %}
-        <ol class="track-list">
-          {% for track in tracks %}
-            <li class="track-item">
-              <div class="track-meta">
-                <span class="track-title">{{ track.title }}</span>
-                <span class="track-slug">{{ track.slug }}</span>
-                <span
-                  class="subtitle-status {% if track.has_subtitles %}ok{% else %}pending{% endif %}"
-                  data-subtitle-status="{{ track.slug }}"
-                >
-                  Subtitles: {% if track.has_subtitles %}generated{% else %}not generated{% endif %}
-                </span>
+{% block content %}
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-12 col-xl-11 col-xxl-10">
+      <div class="card site-card border-0 rounded-4 shadow-lg mb-4">
+        <div class="card-body p-4 p-md-5">
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 border-bottom pb-3">
+            <div>
+              <div class="site-eyebrow mb-2">Administration</div>
+              <h1 class="h2 mb-1">Podcast Management</h1>
               </div>
-              <div class="track-actions">
-                <form method="post" class="inline-form">
-                  {% csrf_token %}
-                  <input type="hidden" name="action" value="generate_subtitles">
-                  <input type="hidden" name="track_slug" value="{{ track.slug }}">
-                  <button
-                    type="submit"
-                    class="btn secondary-btn"
-                    data-generate-button="{{ track.slug }}"
-                    onclick="return true"
-                  >
-                    {% if track.has_subtitles %}Regenerate subtitles{% else %}Generate subtitles{% endif %}
-                  </button>
-                </form>
+          </div>
 
-                <form method="post" class="delete-form">
-                  {% csrf_token %}
-                  <input type="hidden" name="action" value="delete">
-                  <input type="hidden" name="track_slug" value="{{ track.slug }}">
-                  <button type="submit" class="btn danger-btn" onclick="return confirm('Remove {{ track.title|escapejs }}?');">Remove</button>
-                </form>
-              </div>
-            </li>
-          {% endfor %}
-        </ol>
-      {% else %}
-        <p>No tracks uploaded yet.</p>
-      {% endif %}
-    </section>
+          <div class="row g-4">
+            <div class="col-12 col-lg-5">
+              <section class="card border-0 shadow-sm site-card h-100">
+                <div class="card-body">
+                  <h2 class="h4 mb-2">Add New Podcast</h2>
+                  <p class="site-muted mb-4">Upload audio and subtitles will be generated automatically.</p>
+
+                  <form method="post" enctype="multipart/form-data" class="vstack gap-3">
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                      <div class="alert alert-danger mb-0" role="alert">
+                        {% for error in form.non_field_errors %}
+                          <div>{{ error }}</div>
+                        {% endfor %}
+                      </div>
+                    {% endif %}
+
+                    <div>
+                      <label for="id_title" class="form-label fw-semibold">Podcast title <span class="site-muted fw-normal">(optional)</span></label>
+                      {{ form.title }}
+                      {% if form.title.errors %}
+                        <div class="invalid-feedback d-block">
+                          {% for error in form.title.errors %}
+                            <div>{{ error }}</div>
+                          {% endfor %}
+                        </div>
+                      {% endif %}
+                    </div>
+
+                    <div>
+                      <label for="id_audio_file" class="form-label fw-semibold">Audio file</label>
+                      {{ form.audio_file }}
+                      {% if form.audio_file.errors %}
+                        <div class="invalid-feedback d-block">
+                          {% for error in form.audio_file.errors %}
+                            <div>{{ error }}</div>
+                          {% endfor %}
+                        </div>
+                      {% endif %}
+                      <div class="form-text">Supported formats: mp3, wav, m4a, ogg, flac.</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary px-4">Upload track</button>
+                  </form>
+                </div>
+              </section>
+            </div>
+
+            <div class="col-12 col-lg-7">
+              <section class="card border-0 shadow-sm site-card h-100">
+                <div class="card-body">
+                  <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+                    <h2 class="h4 mb-0">Current Podcasts</h2>
+                    <span class="badge rounded-pill text-bg-light">{{ tracks|length }} total</span>
+                  </div>
+
+                  {% if tracks %}
+                    <div class="list-group list-group-flush">
+                      {% for track in tracks %}
+                        <div class="list-group-item px-0 py-3 track-item">
+                          <div class="d-flex flex-column flex-xl-row gap-3 justify-content-between align-items-xl-center">
+                            <div class="track-meta">
+                              <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="track-title fw-semibold">{{ track.title }}</span>
+                                <span class="badge {% if track.has_subtitles %}text-bg-success{% else %}text-bg-warning{% endif %}">
+                                  {% if track.has_subtitles %}Subtitles ready{% else %}Subtitles pending{% endif %}
+                                </span>
+                              </div>
+                              <span class="track-slug text-body-secondary small">{{ track.slug }}</span>
+                              <span
+                                class="subtitle-status {% if track.has_subtitles %}ok{% else %}pending{% endif %} small"
+                                data-subtitle-status="{{ track.slug }}"
+                              >
+                              </span>
+                            </div>
+                            <div class="track-actions d-flex flex-wrap justify-content-xl-end gap-2">
+                              <a href="{% url 'player-episode' track.slug %}" class="btn btn-outline-secondary btn-sm">Open player</a>
+
+                              <form method="post" class="inline-form d-flex flex-wrap gap-2 align-items-center">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="generate_subtitles">
+                                <input type="hidden" name="track_slug" value="{{ track.slug }}">
+                                <button
+                                  type="submit"
+                                  class="btn btn-outline-primary btn-sm"
+                                  data-generate-button="{{ track.slug }}"
+                                  onclick="return true"
+                                >
+                                  {% if track.has_subtitles %}Regenerate subtitles{% else %}Generate subtitles{% endif %}
+                                </button>
+                              </form>
+
+                              <form method="post" class="delete-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="track_slug" value="{{ track.slug }}">
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Remove {{ track.title|escapejs }}?');">Remove</button>
+                              </form>
+                            </div>
+                          </div>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  {% else %}
+                    <div class="alert alert-secondary mb-0" role="alert">
+                      No tracks uploaded yet.
+                    </div>
+                  {% endif %}
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
+</div>
 
-  <script>
+<script>
     (() => {
       const statusByTrack = new Map();
       let refreshTimer = null;
@@ -133,7 +167,7 @@
           statusEl.textContent = `Subtitles: error (${state.error})`;
           statusEl.classList.remove("ok", "pending", "generating");
           statusEl.classList.add("error");
-          buttonEl.textContent = "Retry generation";
+          buttonEl.textContent = "Retry alignment";
           buttonEl.disabled = false;
           return;
         }
@@ -146,19 +180,17 @@
           statusEl.textContent = `Subtitles: generating...${etaText}`;
           statusEl.classList.remove("ok", "pending", "error");
           statusEl.classList.add("generating");
-          buttonEl.textContent = "Generating...";
+          buttonEl.textContent = "Aligning...";
           buttonEl.disabled = true;
           return;
         }
 
         statusEl.classList.remove("generating", "error");
         if (state.has_subtitles) {
-          statusEl.textContent = "Subtitles: generated";
           statusEl.classList.remove("pending");
           statusEl.classList.add("ok");
           buttonEl.textContent = "Regenerate subtitles";
         } else {
-          statusEl.textContent = "Subtitles: not generated";
           statusEl.classList.remove("ok");
           statusEl.classList.add("pending");
           buttonEl.textContent = "Generate subtitles";
@@ -250,6 +282,5 @@
       refreshStatuses();
       setInterval(renderFromCache, localTickMs);
     })();
-  </script>
-</body>
-</html>
+</script>
+{% endblock %}

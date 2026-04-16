@@ -4,8 +4,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 
+from config.media_views import media_serve
 from podcast_management import services as podcast_services
 
 
@@ -24,6 +25,7 @@ class PlayerViewsTests(TestCase):
 			is_superuser=True,
 		)
 		self.client.force_login(self.staff_user)
+		self.request_factory = RequestFactory()
 
 	def tearDown(self):
 		self.settings_override.disable()
@@ -31,11 +33,11 @@ class PlayerViewsTests(TestCase):
 		super().tearDown()
 
 	def test_index_renders(self):
-		response = self.client.get("/")
+		response = self.client.get("/podcasts/")
 		self.assertEqual(response.status_code, 200)
 
 	def test_subtitle_endpoint_returns_404_without_tracks(self):
-		response = self.client.get("/api/subtitles/")
+		response = self.client.get("/podcasts/api/subtitles/")
 		self.assertEqual(response.status_code, 404)
 
 	def test_admin_tracks_can_remove_existing_track(self):
@@ -55,22 +57,30 @@ class PlayerViewsTests(TestCase):
 		self.assertFalse((audio_dir / "test.mp3").exists())
 		self.assertFalse((subtitle_dir / "test.json").exists())
 
-	@patch("podcast_management.services.get_subtitles")
-	def test_subtitle_endpoint_auto_generates_when_missing(self, mock_get_subtitles):
+	def test_subtitle_endpoint_returns_404_when_aligned_subtitles_missing(self):
 		audio_dir = Path(self.temp_media_dir) / "audio"
 		audio_dir.mkdir(parents=True, exist_ok=True)
 		(audio_dir / "test.mp3").write_bytes(b"dummy")
 
-		mock_get_subtitles.return_value = [
-			{"start": 0.0, "end": 1.2, "text": "Hello world"},
-		]
+		response = self.client.get("/podcasts/api/subtitles/?track=test")
+		self.assertEqual(response.status_code, 404)
 
-		response = self.client.get("/api/subtitles/?track=test")
-		self.assertEqual(response.status_code, 200)
-		self.assertEqual(response.json()["segments"][0]["text"], "Hello world")
+	@override_settings(DEBUG=True)
+	def test_media_audio_supports_range_requests(self):
+		audio_dir = Path(self.temp_media_dir) / "audio"
+		audio_dir.mkdir(parents=True, exist_ok=True)
+		(audio_dir / "test.mp3").write_bytes(b"abcdefghijklmnopqrstuvwxyz")
 
-		subtitle_file = Path(self.temp_media_dir) / "subtitles" / "test.json"
-		self.assertTrue(subtitle_file.exists())
+		request = self.request_factory.get(
+			"/media/audio/test.mp3",
+			HTTP_RANGE="bytes=0-4",
+		)
+		response = media_serve(request, "audio/test.mp3")
+
+		self.assertEqual(response.status_code, 206)
+		self.assertEqual(response["Accept-Ranges"], "bytes")
+		self.assertEqual(response["Content-Range"], "bytes 0-4/26")
+		self.assertEqual(response.content, b"abcde")
 
 	def test_track_eta_includes_waiting_jobs(self):
 		with podcast_services._GENERATING_TRACKS_LOCK:

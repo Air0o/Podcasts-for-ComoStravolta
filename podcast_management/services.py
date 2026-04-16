@@ -10,7 +10,6 @@ from subtitles import get_audio_duration_seconds, get_subtitles, load_segments_j
 
 
 SUPPORTED_AUDIO_EXTENSIONS = {'.mp3', '.wav', '.m4a', '.ogg', '.flac'}
-DEFAULT_WHISPER_MODEL = getattr(settings, 'WHISPER_MODEL_NAME', 'medium')
 _GENERATING_TRACKS: set[str] = set()
 _GENERATING_TRACKS_LOCK = Lock()
 _MINIMUM_ETA_OVERHEAD_SECONDS = 1.0
@@ -94,12 +93,10 @@ def delete_track_files(track_slug: str) -> bool:
 
 def list_tracks() -> list[dict]:
     audio_dir = audio_directory()
-    subtitle_dir = subtitle_directory()
+    subtitle_directory().mkdir(parents=True, exist_ok=True)
 
     if not audio_dir.exists():
         return []
-
-    subtitle_dir.mkdir(parents=True, exist_ok=True)
 
     tracks = []
     for audio_file in sorted(audio_dir.iterdir()):
@@ -111,12 +108,7 @@ def list_tracks() -> list[dict]:
 
 
 def ensure_subtitles(track: dict) -> None:
-    subtitle_path = Path(track['subtitle_file'])
-    if subtitle_path.exists():
-        return
-
-    segments = get_subtitles(track['audio_file'], model_name=DEFAULT_WHISPER_MODEL)
-    save_segments_json(segments, subtitle_path)
+    return
 
 
 def is_track_generating(track_slug: str) -> bool:
@@ -187,7 +179,7 @@ def start_track_generation(track: dict) -> bool:
         global _seconds_per_audio_second
         started = monotonic()
         try:
-            segments = get_subtitles(track['audio_file'], model_name=DEFAULT_WHISPER_MODEL)
+            segments = get_subtitles(track['audio_file'], model_name='large')
             save_segments_json(segments, Path(track['subtitle_file']))
             with _GENERATING_TRACKS_LOCK:
                 _GENERATION_ERRORS.pop(track_slug, None)
@@ -224,7 +216,7 @@ def get_track(track_slug: str | None, tracks: list[dict]) -> dict | None:
         for track in tracks:
             if track['slug'] == track_slug:
                 return track
-    return tracks[0]
+    return None
 
 
 def load_track_segments(track: dict) -> list[dict]:

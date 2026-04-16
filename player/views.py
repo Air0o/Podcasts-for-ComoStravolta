@@ -1,12 +1,12 @@
 from django.http import Http404, JsonResponse
 from django.shortcuts import render
 
-from podcast_management.services import ensure_subtitles, get_track, list_tracks, load_track_segments
+from podcast_management.services import get_track, list_tracks, load_track_segments
 
 
-def index(request):
+def index(request, slug=None):
 	tracks = list_tracks()
-	selected_slug = request.GET.get('track')
+	selected_slug = slug or request.GET.get('track')
 	current_track = get_track(selected_slug, tracks)
 	context = {
 		'tracks': [{'slug': t['slug'], 'title': t['title'], 'audio_url': t['audio_url']} for t in tracks],
@@ -20,8 +20,8 @@ def subtitle_segments(request):
 	track = get_track(request.GET.get('track'), tracks)
 	if not track:
 		raise Http404('No subtitle tracks are available')
-
-	ensure_subtitles(track)
+	if not track.get('has_subtitles'):
+		raise Http404('No aligned subtitles are available for this track')
 
 	segments = load_track_segments(track)
 	return JsonResponse(

@@ -9,7 +9,6 @@ from .services import (
     SUPPORTED_AUDIO_EXTENSIONS,
     delete_track_files,
     get_track_generation_error,
-    get_track,
     get_track_eta_seconds,
     is_track_generating,
     list_tracks,
@@ -22,6 +21,17 @@ class TrackUploadForm(forms.Form):
     title = forms.CharField(max_length=120, required=False)
     audio_file = forms.FileField()
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['title'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': 'Optional display title',
+        })
+        self.fields['audio_file'].widget.attrs.update({
+            'class': 'form-control',
+            'accept': ','.join(sorted(SUPPORTED_AUDIO_EXTENSIONS)),
+        })
+
     def clean_audio_file(self):
         audio_file = self.cleaned_data['audio_file']
         extension = Path(audio_file.name).suffix.lower()
@@ -30,7 +40,6 @@ class TrackUploadForm(forms.Form):
                 f"Unsupported audio format. Allowed: {', '.join(sorted(SUPPORTED_AUDIO_EXTENSIONS))}"
             )
         return audio_file
-
 
 @staff_member_required
 def subtitle_generation_status(request):
@@ -56,7 +65,8 @@ def admin_tracks(request):
             if not track_slug:
                 return HttpResponseBadRequest('Missing track slug')
 
-            track = get_track(track_slug, list_tracks())
+            tracks = list_tracks()
+            track = next((item for item in tracks if item['slug'] == track_slug), None)
             if not track:
                 return HttpResponseBadRequest('Unknown track slug')
 
@@ -73,7 +83,10 @@ def admin_tracks(request):
 
         form = TrackUploadForm(request.POST, request.FILES)
         if form.is_valid():
-            uploaded_track = save_uploaded_track(form.cleaned_data['audio_file'], form.cleaned_data['title'])
+            uploaded_track = save_uploaded_track(
+                form.cleaned_data['audio_file'],
+                form.cleaned_data['title'],
+            )
             start_track_generation(uploaded_track)
             return redirect('admin-tracks')
     else:

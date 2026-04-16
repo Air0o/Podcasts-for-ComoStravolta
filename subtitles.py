@@ -121,12 +121,12 @@ def load_segments_json(input_file: Path) -> list[dict]:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("file_path")
+    parser.add_argument("file_path", help="Path to the audio file")
+    parser.add_argument("--model", default="large", help="Whisper model name (default: large)")
     parser.add_argument("--output", help="Path to write JSON segments")
-    parser.add_argument("--model", default="small")
     args = parser.parse_args()
 
-    segments = get_subtitles(args.file_path, args.model)
+    segments = get_subtitles(args.file_path, model_name=args.model)
     if args.output:
         save_segments_json(segments, Path(args.output))
         print(f"Saved {len(segments)} segments to {args.output}")
