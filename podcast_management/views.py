@@ -71,7 +71,7 @@ def admin_tracks(request):
                 return HttpResponseBadRequest('Unknown track slug')
 
             start_track_generation(track)
-            return redirect('admin-tracks')
+            return redirect('podcast:podcast_management:admin-tracks')
 
         if action == 'delete':
             track_slug = request.POST.get('track_slug', '').strip()
@@ -79,7 +79,7 @@ def admin_tracks(request):
                 return HttpResponseBadRequest('Missing track slug')
 
             delete_track_files(track_slug)
-            return redirect('admin-tracks')
+            return redirect('podcast:podcast_management:admin-tracks')
 
         form = TrackUploadForm(request.POST, request.FILES)
         if form.is_valid():
@@ -88,7 +88,7 @@ def admin_tracks(request):
                 form.cleaned_data['title'],
             )
             start_track_generation(uploaded_track)
-            return redirect('admin-tracks')
+            return redirect('podcast:podcast_management:admin-tracks')
     else:
         form = TrackUploadForm()
 

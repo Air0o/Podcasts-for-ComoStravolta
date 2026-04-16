@@ -25,6 +25,9 @@
 
   const tracks = JSON.parse(document.getElementById("tracks-data")?.textContent || "[]");
   const currentTrackId = JSON.parse(document.getElementById("current-track")?.textContent || '""');
+  const subtitleSegmentsEndpoint = JSON.parse(
+    document.getElementById("subtitle-segments-endpoint")?.textContent || '""'
+  );
 
   let activeTrack = tracks.find((t) => t.slug === currentTrackId) || tracks[0];
   let segments = [];
@@ -99,8 +102,17 @@
     const requestId = ++subtitleRequestId;
     isSubtitleLoading = true;
     resetSubtitleState("Loading subtitles...");
+
+    if (!subtitleSegmentsEndpoint) {
+      setSubtitle("Subtitle endpoint is not configured", false);
+      isSubtitleLoading = false;
+      return;
+    }
+
     try {
-      const response = await fetch(`/podcasts/api/subtitles/?track=${encodeURIComponent(slug)}`);
+      const response = await fetch(
+        `${subtitleSegmentsEndpoint}?track=${encodeURIComponent(slug)}`
+      );
       if (requestId !== subtitleRequestId) {
         return;
       }
@@ -122,7 +134,6 @@
 
       segments = payload.segments || [];
       activeIndex = -1;
-      meta.textContent = `${payload.track.title} - ${segments.length} segments`;
       // Unblock subtitle sync immediately after data is ready.
       isSubtitleLoading = false;
       syncSubtitle();

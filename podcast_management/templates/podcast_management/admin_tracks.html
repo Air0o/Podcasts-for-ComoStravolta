@@ -4,9 +4,9 @@
 {% block title %}Podcast Administration{% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="container-fluid px-3 px-xl-4 px-xxl-5">
   <div class="row justify-content-center">
-    <div class="col-12 col-xl-11 col-xxl-10">
+    <div class="col-12 col-xl-12 col-xxl-11">
       <div class="card site-card border-0 rounded-4 shadow-lg mb-4">
         <div class="card-body p-4 p-md-5">
           <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 border-bottom pb-3">
@@ -93,7 +93,7 @@
                               </span>
                             </div>
                             <div class="track-actions d-flex flex-wrap justify-content-xl-end gap-2">
-                              <a href="{% url 'player-episode' track.slug %}" class="btn btn-outline-secondary btn-sm">Open player</a>
+                              <a href="{% url 'podcast:player:player-episode' track.slug %}" class="btn btn-outline-secondary btn-sm">Open player</a>
 
                               <form method="post" class="inline-form d-flex flex-wrap gap-2 align-items-center">
                                 {% csrf_token %}
@@ -147,13 +147,8 @@
           return "almost done";
         }
 
-        const rounded = Math.ceil(seconds);
-        const mins = Math.floor(rounded / 60);
-        const secs = rounded % 60;
-        if (mins === 0) {
-          return `${secs}s left`;
-        }
-        return `${mins}m ${secs}s left`;
+        const minutesLeft = Math.ceil(seconds / 60);
+        return `~${minutesLeft} minutes remaining`;
       }
 
       function applyTrackState(slug, state) {
@@ -180,7 +175,7 @@
           statusEl.textContent = `Subtitles: generating...${etaText}`;
           statusEl.classList.remove("ok", "pending", "error");
           statusEl.classList.add("generating");
-          buttonEl.textContent = "Aligning...";
+          buttonEl.textContent = "Working...";
           buttonEl.disabled = true;
           return;
         }
@@ -256,7 +251,7 @@
 
         requestInFlight = true;
         try {
-          const response = await fetch("{% url 'subtitle-generation-status' %}", {
+          const response = await fetch("{% url 'podcast:podcast_management:subtitle-generation-status' %}", {
             credentials: "same-origin"
           });
           if (!response.ok) {

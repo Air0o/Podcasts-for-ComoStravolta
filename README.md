@@ -13,7 +13,7 @@ Run the server:
 `python manage.py runserver`
 
 Workflow:
-- Open `/manage/tracks/` as a staff user.
+- Open `/podcast/manage` as a staff user.
 - Upload an audio file.
 - The app generates subtitle JSON with Whisper `large` and saves it in `media/subtitles/`.
 

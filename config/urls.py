@@ -24,8 +24,7 @@ from .media_views import media_serve
 urlpatterns = [
     path('', RedirectView.as_view(url='/podcast/', permanent=False)),
     path('admin/', admin.site.urls),
-    path('podcast/manage', include('podcast_management.urls')),
-    path('podcast/', include('player.urls')),
+    path('podcast/', include('config.podcast_urls')),
 ]
 
 if settings.DEBUG:

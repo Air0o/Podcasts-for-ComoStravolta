@@ -52,8 +52,9 @@ body.site-shell::after {
   padding: 32px 18px;
 }
 
-.site-main > .container {
-  width: min(860px, 100%);
+.site-main > .container,
+.site-main > .container-fluid {
+  width: min(1180px, 100%);
 }
 
 .site-card {

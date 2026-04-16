@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase, override_settings
+from django.urls import reverse
 
 from config.media_views import media_serve
 from podcast_management import services as podcast_services
@@ -33,11 +34,11 @@ class PlayerViewsTests(TestCase):
 		super().tearDown()
 
 	def test_index_renders(self):
-		response = self.client.get("/podcasts/")
+		response = self.client.get(reverse("podcast:player:player-index"))
 		self.assertEqual(response.status_code, 200)
 
 	def test_subtitle_endpoint_returns_404_without_tracks(self):
-		response = self.client.get("/podcasts/api/subtitles/")
+		response = self.client.get(reverse("podcast:player:subtitle-segments"))
 		self.assertEqual(response.status_code, 404)
 
 	def test_admin_tracks_can_remove_existing_track(self):
@@ -49,7 +50,7 @@ class PlayerViewsTests(TestCase):
 		(subtitle_dir / "test.json").write_text("[]", encoding="utf-8")
 
 		response = self.client.post(
-			"/manage/tracks/",
+			reverse("podcast:podcast_management:admin-tracks"),
 			{"action": "delete", "track_slug": "test"},
 		)
 
@@ -62,7 +63,7 @@ class PlayerViewsTests(TestCase):
 		audio_dir.mkdir(parents=True, exist_ok=True)
 		(audio_dir / "test.mp3").write_bytes(b"dummy")
 
-		response = self.client.get("/podcasts/api/subtitles/?track=test")
+		response = self.client.get(reverse("podcast:player:subtitle-segments"), {"track": "test"})
 		self.assertEqual(response.status_code, 404)
 
 	@override_settings(DEBUG=True)
@@ -132,10 +133,10 @@ class PodcastManagementAccessTests(TestCase):
 		response = self.client.get("/admin/")
 		self.assertEqual(response.status_code, 200)
 		self.assertContains(response, "Go to Track Management")
-		self.assertContains(response, "/manage/tracks/")
+		self.assertContains(response, reverse("podcast:podcast_management:admin-tracks"))
 
 	def test_track_management_redirects_anonymous_users_to_admin_login(self):
-		response = self.client.get("/manage/tracks/")
+		response = self.client.get(reverse("podcast:podcast_management:admin-tracks"))
 		self.assertEqual(response.status_code, 302)
 		self.assertIn("/admin/login/", response["Location"])
 
@@ -149,6 +150,6 @@ class PodcastManagementAccessTests(TestCase):
 		)
 		self.client.force_login(regular_user)
 
-		response = self.client.get("/manage/tracks/")
+		response = self.client.get(reverse("podcast:podcast_management:admin-tracks"))
 		self.assertEqual(response.status_code, 302)
 		self.assertIn("/admin/login/", response["Location"])
