@@ -15,6 +15,8 @@ _PRELOADING_MODELS_LOCK = Lock()
 _TRANSCRIBE_LOCKS: dict[str, Lock] = {}
 _TRANSCRIBE_LOCKS_GUARD = Lock()
 
+_WHISPER_MODEL = "large"
+
 
 def ensure_ffmpeg_available() -> None:
     if shutil.which("ffmpeg"):
@@ -46,24 +48,24 @@ def ensure_ffmpeg_available() -> None:
 
 
 @lru_cache(maxsize=4)
-def load_model(model_name: str = "large"):
-    return whisper.load_model(model_name)
+def load_model():
+    return whisper.load_model(_WHISPER_MODEL)
 
 
-def preload_model_in_background(model_name: str = "large") -> bool:
+def preload_model_in_background() -> bool:
     with _PRELOADING_MODELS_LOCK:
-        if model_name in _PRELOADING_MODELS:
+        if _WHISPER_MODEL in _PRELOADING_MODELS:
             return False
-        _PRELOADING_MODELS.add(model_name)
+        _PRELOADING_MODELS.add(_WHISPER_MODEL)
 
     def _run() -> None:
         try:
-            load_model(model_name)
+            load_model()
         finally:
             with _PRELOADING_MODELS_LOCK:
-                _PRELOADING_MODELS.discard(model_name)
+                _PRELOADING_MODELS.discard(_WHISPER_MODEL)
 
-    Thread(target=_run, name=f"whisper-preload-{model_name}", daemon=True).start()
+    Thread(target=_run, name=f"whisper-preload-{_WHISPER_MODEL}", daemon=True).start()
     return True
 
 
@@ -92,11 +94,11 @@ def normalize_segments(segments: list[dict]) -> list[dict]:
     return normalized
 
 
-def get_subtitles(file_path: str, model_name: str = "large") -> list[dict]:
+def get_subtitles(file_path: str) -> list[dict]:
     ensure_ffmpeg_available()
-    model = load_model(model_name)
+    model = load_model()
     # Whisper model inference is not reliable under concurrent access.
-    with _get_transcribe_lock(model_name):
+    with _get_transcribe_lock(_WHISPER_MODEL):
         result = model.transcribe(file_path)
     return normalize_segments(result.get("segments", []))
 
@@ -122,11 +124,10 @@ def load_segments_json(input_file: Path) -> list[dict]:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("file_path", help="Path to the audio file")
-    parser.add_argument("--model", default="large", help="Whisper model name (default: large)")
     parser.add_argument("--output", help="Path to write JSON segments")
     args = parser.parse_args()
 
-    segments = get_subtitles(args.file_path, model_name=args.model)
+    segments = get_subtitles(args.file_path)
     if args.output:
         save_segments_json(segments, Path(args.output))
         print(f"Saved {len(segments)} segments to {args.output}")

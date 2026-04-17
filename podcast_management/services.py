@@ -179,7 +179,7 @@ def start_track_generation(track: dict) -> bool:
         global _seconds_per_audio_second
         started = monotonic()
         try:
-            segments = get_subtitles(track['audio_file'], model_name='large')
+            segments = get_subtitles(track['audio_file'])
             save_segments_json(segments, Path(track['subtitle_file']))
             with _GENERATING_TRACKS_LOCK:
                 _GENERATION_ERRORS.pop(track_slug, None)

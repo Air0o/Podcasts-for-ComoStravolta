@@ -40,7 +40,7 @@ class Command(BaseCommand):
 
             self.stdout.write(f'Generating: {audio_file.name}')
             try:
-                segments = get_subtitles(str(audio_file), model_name='large')
+                segments = get_subtitles(str(audio_file))
                 save_segments_json(segments, output_file)
                 self.stdout.write(self.style.SUCCESS(f'Saved: {output_file.name} ({len(segments)} segments)'))
                 processed += 1
