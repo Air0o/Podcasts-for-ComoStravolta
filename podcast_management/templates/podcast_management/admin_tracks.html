@@ -81,7 +81,10 @@
                             <div class="track-meta">
                               <div class="d-flex align-items-center gap-2 flex-wrap">
                                 <span class="track-title fw-semibold">{{ track.title }}</span>
-                                <span class="badge {% if track.has_subtitles %}text-bg-success{% else %}text-bg-warning{% endif %}">
+                                <span
+                                  class="badge {% if track.has_subtitles %}text-bg-success{% else %}text-bg-warning{% endif %}"
+                                  data-subtitle-badge="{{ track.slug }}"
+                                >
                                   {% if track.has_subtitles %}Subtitles ready{% else %}Subtitles pending{% endif %}
                                 </span>
                               </div>
@@ -154,7 +157,8 @@
       function applyTrackState(slug, state) {
         const statusEl = document.querySelector(`[data-subtitle-status="${slug}"]`);
         const buttonEl = document.querySelector(`[data-generate-button="${slug}"]`);
-        if (!statusEl || !buttonEl) {
+        const badgeEl = document.querySelector(`[data-subtitle-badge="${slug}"]`);
+        if (!statusEl || !buttonEl || !badgeEl) {
           return;
         }
 
@@ -162,6 +166,9 @@
           statusEl.textContent = `Subtitles: error (${state.error})`;
           statusEl.classList.remove("ok", "pending", "generating");
           statusEl.classList.add("error");
+          badgeEl.textContent = "Subtitles pending";
+          badgeEl.classList.remove("text-bg-success");
+          badgeEl.classList.add("text-bg-warning");
           buttonEl.textContent = "Retry alignment";
           buttonEl.disabled = false;
           return;
@@ -175,6 +182,9 @@
           statusEl.textContent = `Subtitles: generating...${etaText}`;
           statusEl.classList.remove("ok", "pending", "error");
           statusEl.classList.add("generating");
+          badgeEl.textContent = "Subtitles pending";
+          badgeEl.classList.remove("text-bg-success");
+          badgeEl.classList.add("text-bg-warning");
           buttonEl.textContent = "Working...";
           buttonEl.disabled = true;
           return;
@@ -182,12 +192,20 @@
 
         statusEl.classList.remove("generating", "error");
         if (state.has_subtitles) {
+          statusEl.textContent = "Subtitles: ready";
           statusEl.classList.remove("pending");
           statusEl.classList.add("ok");
+          badgeEl.textContent = "Subtitles ready";
+          badgeEl.classList.remove("text-bg-warning");
+          badgeEl.classList.add("text-bg-success");
           buttonEl.textContent = "Regenerate subtitles";
         } else {
+          statusEl.textContent = "Subtitles: pending";
           statusEl.classList.remove("ok");
           statusEl.classList.add("pending");
+          badgeEl.textContent = "Subtitles pending";
+          badgeEl.classList.remove("text-bg-success");
+          badgeEl.classList.add("text-bg-warning");
           buttonEl.textContent = "Generate subtitles";
         }
         buttonEl.disabled = false;
