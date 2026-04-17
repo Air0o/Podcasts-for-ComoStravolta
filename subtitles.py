@@ -1,7 +1,9 @@
 import argparse
 import json
+import logging
 import os
 import shutil
+import warnings
 from functools import lru_cache
 from pathlib import Path
 from threading import Lock, Thread
@@ -16,6 +18,7 @@ _TRANSCRIBE_LOCKS: dict[str, Lock] = {}
 _TRANSCRIBE_LOCKS_GUARD = Lock()
 
 _WHISPER_MODEL = "large"
+logger = logging.getLogger(__name__)
 
 
 def ensure_ffmpeg_available() -> None:
@@ -61,6 +64,8 @@ def preload_model_in_background() -> bool:
     def _run() -> None:
         try:
             load_model()
+        except Exception:
+            logger.exception("Failed to preload Whisper model '%s'", _WHISPER_MODEL)
         finally:
             with _PRELOADING_MODELS_LOCK:
                 _PRELOADING_MODELS.discard(_WHISPER_MODEL)
@@ -95,12 +100,29 @@ def normalize_segments(segments: list[dict]) -> list[dict]:
 
 
 def get_subtitles(file_path: str) -> list[dict]:
-    ensure_ffmpeg_available()
-    model = load_model()
-    # Whisper model inference is not reliable under concurrent access.
-    with _get_transcribe_lock(_WHISPER_MODEL):
-        result = model.transcribe(file_path)
-    return normalize_segments(result.get("segments", []))
+    logger.info("Starting subtitle generation for '%s'", file_path)
+    try:
+        ensure_ffmpeg_available()
+        model = load_model()
+        # Capture warnings emitted by Whisper/ffmpeg dependencies and forward them to logging.
+        with warnings.catch_warnings(record=True) as caught_warnings:
+            warnings.simplefilter("always")
+            # Whisper model inference is not reliable under concurrent access.
+            with _get_transcribe_lock(_WHISPER_MODEL):
+                result = model.transcribe(file_path)
+        for warning_item in caught_warnings:
+            logger.warning(
+                "Subtitle generation warning for '%s': %s",
+                file_path,
+                str(warning_item.message),
+            )
+
+        segments = normalize_segments(result.get("segments", []))
+        logger.info("Subtitle generation completed for '%s' with %d segments", file_path, len(segments))
+        return segments
+    except Exception:
+        logger.exception("Subtitle generation failed for '%s'", file_path)
+        raise
 
 
 def get_audio_duration_seconds(file_path: str) -> float:

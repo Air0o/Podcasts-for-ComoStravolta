@@ -1,10 +1,13 @@
 from pathlib import Path
+import logging
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from subtitles import get_subtitles, save_segments_json
 from podcast_management.services import SUPPORTED_AUDIO_EXTENSIONS
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -21,6 +24,7 @@ class Command(BaseCommand):
         if not audio_dir.exists():
             self.stdout.write(self.style.WARNING(f'Audio directory not found: {audio_dir}'))
             self.stdout.write('Create it and place audio files inside, then run this command again.')
+            logger.warning('Subtitle generation aborted. Audio directory not found: %s', audio_dir)
             return
 
         force = options['force']
@@ -36,6 +40,7 @@ class Command(BaseCommand):
             if output_file.exists() and not force:
                 skipped += 1
                 self.stdout.write(f'Skipping existing: {output_file.name}')
+                logger.warning('Skipping subtitle generation because output already exists: %s', output_file)
                 continue
 
             self.stdout.write(f'Generating: {audio_file.name}')
@@ -47,5 +52,6 @@ class Command(BaseCommand):
             except Exception as exc:
                 failed += 1
                 self.stdout.write(self.style.ERROR(f'Failed {audio_file.name}: {exc}'))
+                logger.exception('Failed subtitle generation for %s', audio_file)
 
         self.stdout.write(self.style.SUCCESS(f'Done. Processed={processed}, Skipped={skipped}, Failed={failed}'))
